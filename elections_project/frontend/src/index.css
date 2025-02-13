@@ -1,0 +1,157 @@
+/* 🔹 Configuración general */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f4f6f9;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* 🔹 Contenedor principal */
+.container {
+  width: 90%;
+  max-width: 1200px;
+  text-align: center;
+}
+
+/* 🔹 Logo */
+.logo {
+  width: 500px; /* Tamaño inicial grande */
+  transition: all 0.3s ease-in-out;
+}
+
+/* 🔹 Cuando hay respuesta, el logo se hace más pequeño */
+.logo-small {
+  width: 200px;
+}
+
+/* 🔹 Formulario */
+.form-control {
+  font-size: 1rem;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+/* 🔹 Botón de enviar */
+.btn-primary {
+  padding: 10px 20px;
+  font-size: 1rem;
+}
+
+/* 🔹 Caja de respuesta */
+.card {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+/* 🔹 Texto de respuesta */
+.respuesta-texto {
+  white-space: pre-wrap;
+  text-align: left;
+  font-size: 1rem;
+}
+
+/* 🔹 Formato para Markdown: Negritas y Viñetas */
+.respuesta-texto strong {
+  font-weight: bold;
+}
+
+/* 🔹 Ajuste global para eliminar márgenes innecesarios */
+.respuesta-texto * {
+  margin: 0;
+  padding: 0;
+}
+
+/* 🔹 Compactar listas */
+.respuesta-texto ul,
+.respuesta-texto ol {
+  padding-left: 15px; /* Mantener alineación */
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* 🔹 Asegurar que cada elemento de lista no tenga espacios extra */
+.respuesta-texto li {
+  margin: 0;
+  padding: 0;
+  list-style-position: inside; /* Hace que los puntos de la lista queden más pegados */
+}
+
+/* 🔹 Evitar espacios en negritas y títulos */
+.respuesta-texto strong,
+.respuesta-texto b {
+  display: inline;
+}
+
+/* 🔹 Evitar saltos de línea no deseados */
+.respuesta-texto p {
+  display: inline; /* Hace que los párrafos se comporten como texto normal */
+  margin-right: 5px; /* Pequeño margen para separación natural */
+}
+
+
+
+/* 🔹 Métricas de evaluación */
+.metricas {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+
+.metricas p {
+  font-size: 1.1rem;
+}
+
+/* 🔹 Diseño responsivo */
+@media screen and (max-width: 1024px) {
+  .container {
+    width: 100%;
+  }
+
+  .logo {
+    width: 200px;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  .small-logo {
+    width: 120px;
+  }
+  
+  .respuesta-box {
+    max-height: 400px; /* Evita que se expanda mucho */
+    overflow-y: auto; /* Permite el desplazamiento */
+  }
+  
+
+  .form-control, .btn-primary {
+    font-size: 0.9rem;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .respuesta-texto {
+    font-size: 0.9rem;
+  }
+
+  .metricas p {
+    font-size: 1rem;
+  }
+}
+
+/* 🔹 Caja de respuesta con desplazamiento */
+.respuesta-box {
+  background-color: #ffffff;
+  padding: 20px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  margin-top: 20px;
+  max-height: 300px; /* Altura fija */
+  overflow-y: auto; /* Habilita el desplazamiento */
+}
