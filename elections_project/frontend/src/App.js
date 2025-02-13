@@ -18,22 +18,43 @@ function App() {
     setError(null);
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/consulta",
-        { consulta },
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const response = await fetch("http://localhost:5000/consulta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consulta }),
+      });
 
-      // Asegurarse de que `respuesta` y `metricas` se asignen correctamente
-      setRespuesta(res.data.respuesta || "No se pudo generar una respuesta.");
+      if (!response.ok) {
+        throw new Error("Error al conectar con el backend.");
+      }
 
-      // Verifica si `metricas` existe en la respuesta del backend
-      if (res.data.metricas) {
-        setMetricas({
-          precision: res.data.metricas.precision?.toFixed(3) || "0.000",
-          recall: res.data.metricas.recall?.toFixed(3) || "0.000",
-          f1_score: res.data.metricas.f1_score?.toFixed(3) || "0.000",
-        });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      let accumulatedResponse = "";
+      setRespuesta("");
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedResponse += chunk;
+        setRespuesta((prev) => prev + chunk);
+      }
+
+      try {
+        const jsonResponse = JSON.parse(accumulatedResponse);
+        setRespuesta(jsonResponse.respuesta || "No se pudo generar una respuesta.");
+        if (jsonResponse.metricas) {
+          setMetricas({
+            precision: jsonResponse.metricas.precision?.toFixed(3) || "0.000",
+            recall: jsonResponse.metricas.recall?.toFixed(3) || "0.000",
+            f1_score: jsonResponse.metricas.f1_score?.toFixed(3) || "0.000",
+          });
+        }
+      } catch (err) {
+        console.error("Error parseando JSON", err);
       }
     } catch (error) {
       setError("Error al conectar con el backend.");
@@ -42,13 +63,11 @@ function App() {
     setLoading(false);
   };
 
-
   return (
     <div className="container mt-5">
       <div className="row justify-content-center">
         <div className="col-md-8 text-center">
           <img src="/alphaquery.png" alt="Logo" className={`logo mb-3 ${respuesta ? "small-logo" : ""}`} />
-
           <form onSubmit={manejarEnvio} className="d-flex">
             <input
               type="text"
@@ -69,7 +88,7 @@ function App() {
         <div className="row justify-content-center mt-4">
           <div className="col-md-8">
             <div className="card p-4 shadow-sm respuesta-box">
-              <ReactMarkdown className="respuesta-texto">{(respuesta)}</ReactMarkdown>
+              <ReactMarkdown className="respuesta-texto">{respuesta}</ReactMarkdown>
             </div>
           </div>
 

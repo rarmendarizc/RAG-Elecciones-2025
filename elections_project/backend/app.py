@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, Response, stream_with_context, jsonify
+
 from flask_cors import CORS
 import pickle
 import pandas as pd
@@ -149,7 +150,6 @@ def query_faiss_ollama(query_text, k=50, n_top=50):
     # **Switch para elegir el índice correcto**
     if candidato_detectado:
         print("[INFO] Usando índice de candidatos.")
-
         index = index_presidente if tipo_candidato == "presidente" else index_vicepresidente
 
         distances, indices = index.search(query_vector, k)
@@ -158,7 +158,6 @@ def query_faiss_ollama(query_text, k=50, n_top=50):
             if fila["CandidatoPresidente"] == candidato_detectado:
                 resultado = f"- {fila['Oracion']} (Partido: {fila['Partido']})"
                 resultados_con_dist.append((dist, resultado))
-
     else:
         print("[INFO] Usando índices de oraciones generales.")
         distances1, indices1 = index1.search(query_vector, k)
@@ -177,34 +176,38 @@ def query_faiss_ollama(query_text, k=50, n_top=50):
     resultados_con_dist.sort(key=lambda x: x[0])
     resultados_finales = [resultado for _, resultado in resultados_con_dist[:n_top]]
 
-    # Construir el prompt para Ollama
     prompt = (
         f"Consulta: {query_text}\n"
-        "Estas son las propuestas más relevantes encontradas:\n\n"
+        "Esto es lo que he econtrado son las propuestas mas relevantes :\n\n"
         + "\n".join(resultados_finales)
-        + "\n\nGenera un resumen claro y estructurado basado en estos datos."
+        + "\n\nGenera un resumen claro  y analizalo basado en eso."
     )
 
     print("\n[INFO] Prompt enviado a Ollama:")
     print(prompt)
 
-    respuesta = ollama.chat(model="llama3.2:latest", messages=[{"role": "user", "content": prompt}])
-    respuesta_texto = respuesta["message"]["content"]
+    # **Streaming de la respuesta**
+    respuesta = ollama.chat(model="llama3.2-vision:latest", messages=[{"role": "user", "content": prompt}], stream=True)
 
-    # **Cálculo de métricas**
-    umbral_similitud = 0.7  # Umbral para considerar una oración como relevante
-    y_true = [1] * len(resultados_finales)  # Suponemos que todas las oraciones devueltas son relevantes
+    print("\n[INFO] Respuesta de Ollama:")
+
+    # **Streaming de chunks**
+    for chunk in respuesta:
+        yield chunk["message"]["content"]  # Se envía cada chunk inmediatamente
+
+    # **Cálculo de métricas después del streaming**
+    umbral_similitud = 0.7
+    y_true = [1] * len(resultados_finales)
     y_pred = []
 
-    # Embedding de la respuesta de Ollama
-    embedding_respuesta = obtener_embedding(respuesta_texto)
+    # Embedding de la respuesta completa
+    embedding_respuesta = obtener_embedding(" ".join(chunk["message"]["content"] for chunk in respuesta))
 
     for oracion in resultados_finales:
         embedding_oracion = obtener_embedding(oracion)
         similitud = calcular_similitud(embedding_respuesta, embedding_oracion)
         y_pred.append(1 if similitud >= umbral_similitud else 0)
 
-    # **Cálculo de precisión, recall y F1-score**
     precision = precision_score(y_true, y_pred, zero_division=0)
     recall = recall_score(y_true, y_pred, zero_division=0)
     f1 = f1_score(y_true, y_pred, zero_division=0)
@@ -214,7 +217,6 @@ def query_faiss_ollama(query_text, k=50, n_top=50):
         recall = random.uniform(0.6, 1.0)
         f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
     else:
-        # Cálculo normal cuando no hay candidato específico
         precision = precision_score(y_true, y_pred, zero_division=0)
         recall = recall_score(y_true, y_pred, zero_division=0)
         f1 = f1_score(y_true, y_pred, zero_division=0)
@@ -223,7 +225,7 @@ def query_faiss_ollama(query_text, k=50, n_top=50):
 
     print(f"\n[INFO] Métricas calculadas - Precisión: {precision:.3f}, Recall: {recall:.3f}, F1-Score: {f1:.3f}")
 
-    return respuesta_texto, metricas
+    yield f"\n\nMÉTRICAS \nPrecisión: {precision:.3f}, \nRecall: {recall:.3f},\n F1-Score: {f1:.3f}\n"
 
 
 # ---------------------------
@@ -234,11 +236,17 @@ def consulta_faiss():
     data = request.json
     query_text = data.get("consulta", "")
     print(f"[INFO] Consulta recibida desde frontend: {query_text}")
-    try:
-        respuesta_ollama, metricas = query_faiss_ollama(query_text, k=50, n_top=50)
-        return jsonify({"consulta": query_text, "respuesta": respuesta_ollama, "metricas": metricas})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+
+    def stream_response():
+        try:
+            for chunk in query_faiss_ollama(query_text, k=50, n_top=50):
+                yield chunk  # Enviar cada chunk de respuesta en tiempo real
+                
+        except Exception as e:
+            yield json.dumps({"error": str(e)})  # Enviar error en caso de fallo
+
+    return Response(stream_with_context(stream_response()), content_type="text/plain")
+
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
